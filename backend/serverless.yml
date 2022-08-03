@@ -130,6 +130,8 @@ functions:
     events:
       - http:
           method: post
+          cors: true
+          authorizer: Auth
           path: todos/{todoId}/attachment
     iamRoleStatements:
       - Effect: Allow
@@ -213,7 +215,7 @@ resources:
       Properties:
         PolicyDocument:
           Id: MySlsPolicy
-          Version: "2008-10-17"
+          Version: "2012-10-17"
           Statement:
             - Sid: PublicReadForGetBucketObjects
               Effect: Allow
