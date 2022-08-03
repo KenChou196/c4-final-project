@@ -46,11 +46,11 @@ export async function deleteTodo(
   todoAccess.deleteTodo(todoId, userId);
 }
 
-export async function createAttachmentPresignedUrl(
+export async function createAttachmentUrl(
   todoId: String,
   imageId: String,
   userId: String
 ): Promise<string> {
-  return todoAccess.createAttachmentPresignedUrl(todoId, imageId, userId);
+  return todoAccess.createAttachmentUrl(todoId, imageId, userId);
 }
 

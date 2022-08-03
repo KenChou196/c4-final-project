@@ -3,15 +3,13 @@ import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 import { createLogger } from '../utils/logger'
 import { TodoItem } from '../models/TodoItem'
 import { TodoUpdate } from '../models/TodoUpdate';
-import { customLog } from '../utils/customLog';
 
-const AWSXRay = require('aws-xray-sdk')
-const XAWS = AWSXRay.captureAWS(AWS)
-const logger = createLogger('TodosAccess')
-
+const AWSXRay = require('aws-xray-sdk');
+const XAWS = AWSXRay.captureAWS(AWS);
+// create logger;
+const logger = createLogger('BE - TodosAccessLogger ')
 function createDynamoDBClient() {
     if (process.env.IS_OFFLINE) {
-      customLog("Init local DynamoDB", 'log');
       return new XAWS.DynamoDB.DocumentClient({
         region: "localhost",
         endpoint: "http://localhost:8000",
@@ -22,6 +20,7 @@ function createDynamoDBClient() {
   }
 // TODO: Implement the dataLayer logic
 export class TodosAccess {
+  // init class property;
   constructor(
     private readonly docClient: DocumentClient = createDynamoDBClient(),
     private readonly todo_table = process.env.TODOS_TABLE,
@@ -32,9 +31,8 @@ export class TodosAccess {
       signatureVersion: "v4",
     })
   ) {}
-
+  // init class method
   async getTodos(userId: String): Promise<any> {
-    customLog(`Get List todo with userId =  ${userId}`, 'log')
     try {
       const result = await this.docClient
       .query({
@@ -44,45 +42,42 @@ export class TodosAccess {
         ExpressionAttributeValues: {
           ":userId": userId,
         },
+      }, (error: AWS.AWSError, data: AWS.DynamoDB.DocumentClient.QueryOutput) => {
+        if (error) {
+          logger.error(`getTodos error ${JSON.stringify(error)}`)
+        } else {
+          logger.log('getTodos success', data);
+        }
       })
       .promise();
       const items = result.Items
-      logger.info("Get list todo", {
+      logger.info("getTodos invoke", {
         userId: userId,
         date: new Date().toISOString
       })
       return items as TodoItem[];
     } catch (error) {
-      customLog(`error when get todo ${(error as Error).message}`, 'log')
+      logger.error(`getTodos error ${(error as Error).message}`)
     }
   }
 
   async createTodo(todo: TodoItem): Promise<TodoItem> {
-    customLog(`Get List todo with userId =  ${JSON.stringify(todo)}`, 'log')
-    this.docClient
+    try {
+      this.docClient
       .put({
         TableName: this.todo_table,
         Item: todo,
       })
       .promise()
-      // .then(() => {
-      //   logger.info("Create a new item todo", {
-      //     userId: todo.userId,
-      //     todoId: todo.todoId,
-      //     date: new Date().toISOString
-      //   })
-      //   return todo as TodoItem;
-      // })
-      // .catch(error => {
-      //   console.log(`error create todo ${(error as Error).message}`);
-      //   return todo as TodoItem;
-      // })
-      logger.info("Create a new item todo", {
+      logger.info("createTodo invoke", {
         userId: todo.userId,
         todoId: todo.todoId,
         date: new Date().toISOString
       })
       return todo as TodoItem;
+    } catch (error) {
+      logger.error(`createTodo Error=  ${error.message}`)
+    }
   }
 
   async updateTodo(
@@ -90,105 +85,118 @@ export class TodosAccess {
     updatedTodo: TodoUpdate,
     userId: String
   ): Promise<TodoUpdate> {
-    console.log("Updating todoId: ", todoId, " userId: ", userId);
-
-    this.docClient.update(
-      {
-        TableName: this.todo_table,
-        Key: {
-          todoId,
-          userId,
+    try {
+      this.docClient.update(
+        {
+          TableName: this.todo_table,
+          Key: {
+            todoId,
+            userId,
+          },
+          UpdateExpression: "set #name = :n, #dueDate = :due, #done = :d",
+          ExpressionAttributeValues: {
+            ":n": updatedTodo.name,
+            ":due": updatedTodo.dueDate,
+            ":d": updatedTodo.done,
+          },
+          ExpressionAttributeNames: {
+            "#name": "name",
+            "#dueDate": "dueDate",
+            "#done": "done",
+          },
         },
-        UpdateExpression: "set #name = :n, #dueDate = :due, #done = :d",
-        ExpressionAttributeValues: {
-          ":n": updatedTodo.name,
-          ":due": updatedTodo.dueDate,
-          ":d": updatedTodo.done,
-        },
-        ExpressionAttributeNames: {
-          "#name": "name",
-          "#dueDate": "dueDate",
-          "#done": "done",
-        },
-      },
-      function (err, data) {
-        if (err) {
-          console.log("ERRROR " + err);
-          throw new Error("Error " + err);
-        } else {
-          console.log("Element updated " + data);
+        function (err, data) {
+          if (err) {
+            logger.error(`error update todo access ${err.message}`) ;
+          } else {
+            logger.log("Element updated ", data);
+          }
         }
-      }
-    );
-    logger.info("Update a todo", {
-      userId: userId,
-      todoId: todoId,
-      date: new Date().toISOString
-    })
-    return updatedTodo
+      );
+      return updatedTodo
+    } catch (error) {
+      logger.error(`updateTodo Error with Id: ${todoId} of user: ${userId}`);
+    }
   }
 
   async deleteTodo(todoId: String, userId: String): Promise<void> {
-    console.log("Start delete todo with id: ", todoId, " of user with id: ", userId);
-    this.docClient.delete(
-      {
-        TableName: this.todo_table,
-        Key: {
-          todoId,
-          userId,
+    try {
+      this.docClient.delete(
+        {
+          TableName: this.todo_table,
+          Key: {
+            todoId,
+            userId,
+          },
         },
-      },
-      function (err, data) {
-        if (err) {
-          throw new Error("Error when delete  ror " + err);
+        function (err) {
+          if (err) {
+            logger.info("Delete todo Error", {
+              userId: userId,
+              todoId: todoId,
+              date: new Date().toISOString,
+              message: err.message
+            })
+          } else {
+            logger.info("Delete todo item", {
+              userId: userId,
+              todoId: todoId,
+              date: new Date().toISOString
+            })
+          }
         }
-      }
-    );
-    logger.info("Delete todo item", {
-      userId: userId,
-      todoId: todoId,
-      date: new Date().toISOString
-    })
+      );
+    } catch (error) {
+      logger.error(`Error when delete totos ${(error as Error).message}`)
+    }
   }
 
-  async createAttachmentPresignedUrl(
+  async createAttachmentUrl(
     todoId: String,
     imageId: String,
     userId: String
   ): Promise<string> {
-    const attachmentUrl = await this.s3.getSignedUrl("putObject", {
-      Bucket: this.s3_bucket_name,
-      Key: imageId,
-      Expires: this.url_expiration,
-    });
+    try {
+      const attachmentUrl = await this.s3.getSignedUrl("putObject", {
+        Bucket: this.s3_bucket_name,
+        Key: imageId,
+        Expires: this.url_expiration,
+      });
 
-    this.docClient.update(
-      {
-        TableName: this.todo_table,
-        Key: {
-          todoId,
-          userId,
+      this.docClient.update(
+        {
+          TableName: this.todo_table,
+          Key: {
+            todoId,
+            userId,
+          },
+          UpdateExpression: "set attachmentUrl = :attachmentUrl",
+          ExpressionAttributeValues: {
+            ":attachmentUrl": `https://${this.s3_bucket_name}.s3.amazonaws.com/${imageId}`,
+          },
         },
-        UpdateExpression: "set attachmentUrl = :attachmentUrl",
-        ExpressionAttributeValues: {
-          ":attachmentUrl": `https://${this.s3_bucket_name}.s3.amazonaws.com/${imageId}`,
-        },
-      },
-      function (err, data) {
-        if (err) {
-          console.log("ERRROR " + err);
-          throw new Error("Error " + err);
-        } else {
-          console.log("Element updated " + data);
+        function (err) {
+          if (err) {
+            logger.info("attachmentUrl error", {
+              userId: userId,
+              todoId: todoId,
+              date: new Date().toISOString,
+              message: err.message
+            })
+          } else {
+            logger.info("attachmentUrl INIT", {
+              userId: userId,
+              todoId: todoId,
+              date: new Date().toISOString,
+              message: err.message
+            })
+          }
         }
-      }
-    );
-    logger.info("Creata a signedUrl", {
-      userId: userId,
-      todoId: todoId,
-      date: new Date().toISOString
-    })
-    return attachmentUrl;
+      );
+      return attachmentUrl;
+    } catch (error) {
+      logger.error(`error createAttachmentUrl ${error.message}`)
+    }
   }
 }
 

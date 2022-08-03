@@ -5,8 +5,8 @@ import * as middy from 'middy'
 import { cors } from 'middy/middlewares'
 import {  getTodos  } from '../../businessLogic/todos'
 import { getUserId } from '../utils';
-import { customLog } from '../../utils/customLog'
-
+import { createLogger } from '../../utils/logger'
+const logger = createLogger('BE - getTodos :')
 // TODO: Get all TODO items for a current user
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -14,16 +14,14 @@ export const handler = middy(
     try {
       const userId = getUserId(event)
       const todos = await getTodos(userId)
+      const body = JSON.stringify({ items: todos })
+      logger.log(`===== Get todos success =====`, userId);
       return {
         statusCode: 200,
-        body: JSON.stringify(todos),
+        body,
       };
     } catch (error) {
-      customLog(`Error when get list todos ${(error as Error).message}`, 'log')
-      return {
-        statusCode: 401,
-        body: 'Error get list todos',
-      };
+      logger.error(`===== Get todos error =====`, error.message)
     }
   }
 )

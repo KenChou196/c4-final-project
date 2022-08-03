@@ -11,7 +11,7 @@ plugins:
 provider:
   name: aws
   runtime: nodejs12.x
-  lambdaHashingVersion: '20201221'
+  # lambdaHashingVersion: '20201221'
 
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
@@ -25,7 +25,7 @@ provider:
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
     TODOS_CREATED_AT_INDEX: CreatedAtIndex
-    ATTACHMENT_S3_BUCKET: serverless-c4-todo-images-${self:provider.stage}
+    ATTACHMENT_S3_BUCKET: serverless-s3-430131214789-c4-images-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
 
   logs:
@@ -98,6 +98,8 @@ functions:
     events:
       - http:
           method: patch
+          cors: true
+          authorizer: Auth
           path: todos/{todoId}
     iamRoleStatements:
       - Effect: Allow
@@ -112,6 +114,8 @@ functions:
     events:
       - http:
           method: delete
+          cors: true
+          authorizer: Auth
           path: todos/{todoId}
     iamRoleStatements:
       - Effect: Allow
@@ -145,7 +149,7 @@ resources:
     # Feel free to change the names as you like. 
     GatewayResponseDefault4XX:
       Type: AWS::ApiGateway::GatewayResponse
-    Properties:
+      Properties:
         ResponseParameters:
           gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -157,7 +161,7 @@ resources:
     # TODO: Create a DynamoDB table with local secondary index and a composite key
     TodosTable:
       Type: AWS::DynamoDB::Table
-       Properties:
+      Properties:
         AttributeDefinitions:
           - AttributeName: userId
             AttributeType: S
@@ -209,7 +213,7 @@ resources:
       Properties:
         PolicyDocument:
           Id: MySlsPolicy
-          Version: '2022-07-31'
+          Version: "2008-10-17"
           Statement:
             - Sid: PublicReadForGetBucketObjects
               Effect: Allow
