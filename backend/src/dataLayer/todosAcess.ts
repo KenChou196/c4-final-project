@@ -156,47 +156,39 @@ export class TodosAccess {
     imageId: String,
     userId: String
   ): Promise<string> {
-    try {
-      const attachmentUrl = await this.s3.getSignedUrl("putObject", {
-        Bucket: this.s3_bucket_name,
-        Key: imageId,
-        Expires: this.url_expiration,
-      });
+    const attachmentUrl = await this.s3.getSignedUrl('putObject', {
+      Bucket: this.s3_bucket_name,
+      Key: imageId,
+      Expires: this.url_expiration
+    })
 
-      this.docClient.update(
-        {
-          TableName: this.todo_table,
-          Key: {
-            todoId,
-            userId,
-          },
-          UpdateExpression: "set attachmentUrl = :attachmentUrl",
-          ExpressionAttributeValues: {
-            ":attachmentUrl": `https://${this.s3_bucket_name}.s3.amazonaws.com/${imageId}`,
-          },
+    this.docClient.update(
+      {
+        TableName: this.todo_table,
+        Key: {
+          todoId,
+          userId
         },
-        function (err) {
-          if (err) {
-            logger.info("attachmentUrl error", {
-              userId: userId,
-              todoId: todoId,
-              date: new Date().toISOString,
-              message: err.message
-            })
-          } else {
-            logger.info("attachmentUrl INIT", {
-              userId: userId,
-              todoId: todoId,
-              date: new Date().toISOString,
-              message: err.message
-            })
-          }
+        UpdateExpression: 'set attachmentUrl = :attachmentUrl',
+        ExpressionAttributeValues: {
+          ':attachmentUrl': `https://${this.s3_bucket_name}.s3.amazonaws.com/${imageId}`
         }
-      );
-      return attachmentUrl;
-    } catch (error) {
-      logger.error(`error createAttachmentUrl ${error.message}`)
-    }
+      },
+      function (err, data) {
+        if (err) {
+          console.log('ERRROR ' + err)
+          throw new Error('Error ' + err)
+        } else {
+          console.log('Element updated ' + data)
+        }
+      }
+    )
+    logger.info('Created a signedUrl successfully', {
+      userId: userId,
+      todoId: todoId,
+      date: new Date().toISOString
+    })
+    return attachmentUrl
   }
 }
 
