@@ -8,6 +8,7 @@ import { updateTodo } from '../../businessLogic/todos'
 import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
 import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
+import { sendMessageToAllCurrentWsConnections } from '../../utils/ws'
 const logger = createLogger('BE - updateTodo')
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -18,6 +19,7 @@ export const handler = middy(
       const userId = getUserId(event)
       const item = await updateTodo(todoId, updatedTodoRequest, userId);
       logger.log(`updateTodo success`, item)
+      sendMessageToAllCurrentWsConnections('a todo has been updated')
       return {
         statusCode: 200,
         body: JSON.stringify({

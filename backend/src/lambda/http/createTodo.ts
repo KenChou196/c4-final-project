@@ -7,6 +7,7 @@ import { getUserId } from '../utils';
 import { createTodo } from '../../businessLogic/todos'
 import * as uuid from "uuid";
 import { createLogger } from '../../utils/logger'
+import { sendMessageToAllCurrentWsConnections } from '../../utils/ws'
 const logger = createLogger('BE - createTodo')
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -17,6 +18,7 @@ export const handler = middy(
       const todoId = uuid.v4();
       const itemTodo = await createTodo(todoId, newTodo, userId);
       logger.log(`createTodos success`, userId);
+      sendMessageToAllCurrentWsConnections(`New todo created`)
       return {
         statusCode: 200,
         body: JSON.stringify({
